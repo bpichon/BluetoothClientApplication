@@ -17,5 +17,5 @@
             </intent-filter>
         </activity>
     </application>
-
+    <!-- Permission for Location (e.g. GPS): ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION -->
 </manifest>
