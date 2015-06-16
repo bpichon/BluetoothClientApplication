@@ -1,38 +1,31 @@
 package network.hm.edu.bluetoothclientapplication;
 
+import android.app.PendingIntent;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.location.Criteria;
+import android.location.Location;
 import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.util.Log;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
-
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+
+import retrofit.RestAdapter;
 
 /**
  * Created by Bernd on 02.06.2015.
  */
-public class CommunicationTask extends AsyncTask<Void, Void, Position> {
+public class CommunicationTask extends AsyncTask<Void, Void, Position> implements LocationListener {
 
-    private Socket socket;
-    private BufferedReader in;
-    private BufferedWriter out;
+    RestAdapter restAdapter;
+    String myDeviceAddress;
 
     private final Context context;
     private BluetoothAdapter bluetoothAdapter;
@@ -45,59 +38,70 @@ public class CommunicationTask extends AsyncTask<Void, Void, Position> {
     protected Position doInBackground(Void... params) {
         // TODO: impl
         // 1. get all Devices
+        restAdapter = new RestAdapter.Builder()
+                .setEndpoint("http://simon-holzmann.de:8080/")
+                .build();
+
+        myDeviceAddress = bluetoothAdapter.getAddress();
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         BluetoothDiscoverBroadcastReceiver receiver = new BluetoothDiscoverBroadcastReceiver();
         return null;
     }
 
     private void scanFinished(final List<String> deviceAddresses) {
-        /* 1. Open connection */
-        socket = new Socket("localhost", 80);
-        in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+        sendDeviceInfo(deviceAddresses);
+    }
 
+    private void sendDeviceInfo(List<String> deviceAddresses) {
         /* 2. Create request */
-        final String myDeviceAddress = bluetoothAdapter.getAddress();
 
-        JsonObject requestJson = new JsonObject();
-        requestJson.addProperty("requestCode", 0);
-        requestJson.addProperty("deviceId", myDeviceAddress);
-        JsonArray deviceArray = new JsonArray();
-        for (String deviceAddress : deviceAddresses) {
-            deviceArray.add(new JsonPrimitive(deviceAddress));
+        LocationService locationServiceRest = restAdapter.create(LocationService.class);
+        GpsPosition position = locationServiceRest.tryToDeterminateLocation(deviceAddresses, myDeviceAddress);
+
+        if (position == null) {
+            // Position konnte nicht bestimmt werden.
+            getLocationByDevice();
+        } else {
+            // TODO: Position weiterverarbeiten.
+            Log.d("POSITION", "my Position (via BT): [" +
+                    position.getLatitude()+ ", " +
+                    position.getLongitude() + "]");
         }
-        requestJson.add("deviceIds", deviceArray);
+    }
 
-        /* 3. Send Request */
-        out.write(requestJson.toString());
-        out.newLine();
-        out.flush();
+    private void sendMyPosition(Location location) {
+        LocationService locationServiceRest = restAdapter.create(LocationService.class);
+        locationServiceRest.saveMyPosition(new GpsPosition(location.getLatitude(), location.getLongitude()), myDeviceAddress);
+    }
 
-        String response = in.readLine();
+    private void getLocationByDevice() {
+        LocationManager locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        // Define the criteria how to select the locatioin provider -> use
+        // default
+        Criteria criteria = new Criteria();
+        // TODO: glaube nicht, dass das so funktioniert.
+        String provider = locationManager.getBestProvider(criteria, false);
+        locationManager.requestSingleUpdate(provider, this, null);
+    }
 
-        // 3. Get Response and handle
-        JsonObject result = new JsonParser().parse(response).getAsJsonObject();
-        int errorCode = result.get("returnCode").getAsInt();
+    @Override
+    public void onLocationChanged(Location location) {
+        sendMyPosition(location);
+    }
 
-        if (errorCode == 0) {
-            // success
-            double long_ = result.get("long").getAsDouble();
-            double lat = result.get("lat").getAsDouble();
-            Log.d("POSITION", "The current Position is: lat:" + lat + " | long:" + long_);
-            // TODO: as static var speichern oder direkt in das Textfeld schreiben.
-            return;
-        } else if (errorCode == 3) {
-            // Request konnte nicht geparst werden.
-            return;
-        }
-        // erroroCode ist 2 -> nicht genug Geräte -> herkömmliche Lokalisierung verwenden.
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+        // erstmal nix
+    }
 
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+    @Override
+    public void onProviderEnabled(String provider) {
+        // erstmal nix
+    }
 
-        // (4. get GPS position)
-        // (5. Send GPS to Server)
-        // (6. Wait for response)
-        //
+    @Override
+    public void onProviderDisabled(String provider) {
+        // erstmal nix
     }
 
     private class BluetoothDiscoverBroadcastReceiver extends BroadcastReceiver {
