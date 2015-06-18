@@ -22,8 +22,6 @@ import java.util.List;
 
 public class MainActivity extends ActionBarActivity implements Button.OnClickListener {
 
-    private BluetoothAdapter scanner;
-
     private CommunicationTask communicationTask;
     private BroadcastReceiver broadcastReceiver;
 
@@ -33,8 +31,6 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        scanner = BluetoothAdapter.getDefaultAdapter();
 
         communicationTask = new CommunicationTask(this);
 
@@ -74,7 +70,8 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     @Override
     public void onClick(View v) {
-        scanner.startDiscovery();
+        //scanner.startDiscovery();
+        communicationTask.execute();
     }
 
 

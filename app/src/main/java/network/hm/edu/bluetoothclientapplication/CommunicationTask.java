@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
@@ -42,9 +43,19 @@ public class CommunicationTask extends AsyncTask<Void, Void, Position> implement
                 .setEndpoint("http://simon-holzmann.de:8080/")
                 .build();
 
-        myDeviceAddress = bluetoothAdapter.getAddress();
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        BluetoothDiscoverBroadcastReceiver receiver = new BluetoothDiscoverBroadcastReceiver();
+        myDeviceAddress = bluetoothAdapter.getAddress();
+        BluetoothDiscoverBroadcastReceiver broadcastReceiver = new BluetoothDiscoverBroadcastReceiver();
+        bluetoothAdapter.startDiscovery();
+
+        // Registriere Broadcast Action Receives
+        final IntentFilter intentFilter= new IntentFilter();
+        intentFilter.addAction(BluetoothDevice.ACTION_FOUND);
+        intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+        intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        context.registerReceiver(broadcastReceiver, intentFilter);
+        bluetoothAdapter.startDiscovery();
+
         return null;
     }
 
@@ -118,6 +129,7 @@ public class CommunicationTask extends AsyncTask<Void, Void, Position> implement
             }
             if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED.equals(action)) {
                 Log.d("a", "Discovery ended");
+                context.unregisterReceiver(this); // Deregistrieren, wenn fertig
                 scanFinished(discoveredDevices);
             }
             if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {

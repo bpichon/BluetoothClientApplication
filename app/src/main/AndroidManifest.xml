@@ -17,5 +17,9 @@
             </intent-filter>
         </activity>
     </application>
-    <!-- Permission for Location (e.g. GPS): ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION -->
+    <!-- Bluetooth Permission -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!-- GPS / Location Info Permission -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>
