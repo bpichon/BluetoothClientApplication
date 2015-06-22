@@ -137,6 +137,9 @@ public class MainActivity extends ActionBarActivity implements Button.OnClickLis
 
     @Override
     public void onClick(View v) {
+        // Beim start Felder leeren.
+        outputHandler.obtainMessage(1, "").sendToTarget();
+        outputHandler.obtainMessage(2, "").sendToTarget();
         bluetoothScannerTask.execute();
     }
 }
